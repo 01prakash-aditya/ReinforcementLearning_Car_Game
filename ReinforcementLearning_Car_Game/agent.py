@@ -6,48 +6,49 @@ import os
 import neat
 import pygame
 
-# Constants
+# dimns
 WIDTH = 800
 HEIGHT = 600
 
 CAR_SIZE_X = 32
 CAR_SIZE_Y = 32
 
-BORDER_COLOR = (0,170,0) # Color To Crash on Hit
+BORDER_COLOR = (0,170,0) # bg color for collision checker
 
-current_generation = 0 # Generation counter
+current_generation = 0 
 
 class Car:
 
     def __init__(self, startx, starty):
-        # Load Car Sprite and Rotate
+        # load car sprite , rotate
         self.sprite = pygame.image.load('images/racing-car.png').convert_alpha() 
         self.sprite = pygame.transform.scale(self.sprite, (CAR_SIZE_X, CAR_SIZE_Y))
         self.rotated_sprite = self.sprite 
 
-        # self.position = [690, 740] # Starting Position
-        self.position = [startx, starty]  
+        # self.position = [690, 740] 
+        self.position = [startx, starty] # as tracks are dynamic, update start pos
         self.angle = 0
         self.speed = 0
 
-        self.speed_set = False # Flag For Default Speed Later on
+        self.speed_set = False 
 
-        self.center = [self.position[0] + CAR_SIZE_X / 2, self.position[1] + CAR_SIZE_Y / 2] # Calculate Center
+        self.center = [self.position[0] + CAR_SIZE_X / 2, self.position[1] + CAR_SIZE_Y / 2] 
 
-        self.radars = [] # List For Sensors / Radars
-        self.drawing_radars = [] # Radars To Be Drawn
+        self.radars = [] 
+        self.drawing_radars = [] 
 
-        self.alive = True # Boolean To Check If Car is Crashed
+        self.alive = True
 
-        self.distance = 0 # Distance Driven
-        self.time = 0 # Time Passed
+        self.distance = 0 
+        self.time = 0
 
     def draw(self, screen):
-        screen.blit(self.rotated_sprite, self.position) # Draw Sprite
-        self.draw_radar(screen) #OPTIONAL FOR SENSORS
+        #draw sprite, sensors
+        screen.blit(self.rotated_sprite, self.position) 
+        self.draw_radar(screen) # if needed can be removed 
 
     def draw_radar(self, screen):
-        # Optionally Draw All Sensors / Radars
+        # blit sensors
         for radar in self.radars:
             position = radar[0]
             pygame.draw.line(screen, (255, 255, 255), self.center, position, 1)
@@ -56,15 +57,15 @@ class Car:
     def check_collision(self, game_map):
         self.alive = True
         for point in self.corners:
-            # If Any Corner Touches Border Color -> Crash
-            # Assumes Rectangle
+            # if any corner hits, CRASH 
+            # assumed as a rectangle
             if game_map.get_at((int(point[0]), int(point[1]))) == BORDER_COLOR:
                 self.alive = False
                 break
 
     def check_radar(self, degree, game_map):
         length = 1
-        max_length = 150  # Max radar length
+        max_length = 400  # max radar length
 
         while length < max_length:
             x = int(self.center[0] + math.cos(math.radians(360 - (self.angle + degree))) * length)
@@ -102,7 +103,7 @@ class Car:
             self.speed_set = True
 
         # Get Rotated Sprite And Move Into The Right X-Direction
-        # Don't Let The Car Go Closer Than 20px To The Edge
+        # 20 px buffer for crash
         self.rotated_sprite = self.rotate_center(self.sprite, self.angle)
         self.position[0] += math.cos(math.radians(360 - self.angle)) * self.speed
         self.position[0] = max(self.position[0], 20)
@@ -117,11 +118,11 @@ class Car:
         self.position[1] = max(self.position[1], 20)
         self.position[1] = min(self.position[1], WIDTH - 120)
 
-        # Calculate New Center
+        # calculate new center
         self.center = [int(self.position[0]) + CAR_SIZE_X / 2, int(self.position[1]) + CAR_SIZE_Y / 2]
 
-        # Calculate Four Corners
-        # Length Is Half The Side
+        # calculate four corners for collision 
+        # length -> half the side
         length = 0.5 * CAR_SIZE_X
         left_top = [self.center[0] + math.cos(math.radians(360 - (self.angle + 30))) * length, self.center[1] + math.sin(math.radians(360 - (self.angle + 30))) * length]
         right_top = [self.center[0] + math.cos(math.radians(360 - (self.angle + 150))) * length, self.center[1] + math.sin(math.radians(360 - (self.angle + 150))) * length]
@@ -129,16 +130,16 @@ class Car:
         right_bottom = [self.center[0] + math.cos(math.radians(360 - (self.angle + 330))) * length, self.center[1] + math.sin(math.radians(360 - (self.angle + 330))) * length]
         self.corners = [left_top, right_top, left_bottom, right_bottom]
 
-        # Check Collisions And Clear Radars
+        # check collision and update radars
         self.check_collision(game_map)
         self.radars.clear()
 
-        # From -90 To 120 With Step-Size 45 Check Radar
+        # from -90 To 120 With Step-Size 45 Check Radar
         for d in range(-90, 120, 45):
             self.check_radar(d, game_map)
 
     def get_data(self):
-        # Get Distances To Border
+        # get dist from border
         radars = self.radars
         return_values = [0, 0, 0, 0, 0]
         for i, radar in enumerate(radars):
@@ -147,16 +148,16 @@ class Car:
         return return_values
 
     def is_alive(self):
-        # Basic Alive Function
+        # alive func
         return self.alive
 
     def get_reward(self):
-        # Calculate Reward (Maybe Change?)
-        # return self.distance / 50.0
+        # rewarding system
+        # return self -> distance / 50.0
         return self.distance / (CAR_SIZE_X / 2)
 
     def rotate_center(self, image, angle):
-        # Rotate The Rectangle
+        # rotate the rectangle
         rectangle = image.get_rect()
         rotated_image = pygame.transform.rotate(image, angle)
         rotated_rectangle = rectangle.copy()
@@ -168,6 +169,44 @@ class Car:
 def run_simulation(genomes, config):
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Track Invaders - Agent Mode")
+
+    icon = pygame.image.load('images/racing.png')
+    pygame.display.set_icon(icon)
+
+    steering_wheel_img = pygame.image.load('images/steering-wheel.png')
+    steering_wheel_img = pygame.transform.scale(steering_wheel_img, (150, 150))
+
+    pedal_size = (80, 80)
+    accelerator_img = pygame.transform.scale(pygame.image.load('images/brake.png'), pedal_size)
+    brake_img = pygame.transform.scale(pygame.image.load('images/accelerator.png'), pedal_size)
+
+    accelerator_rect = accelerator_img.get_rect(bottomleft=(50, HEIGHT - 20))
+    brake_rect = brake_img.get_rect(bottomleft=(150, HEIGHT - 20))
+
+    tree_img = pygame.image.load('images/grass.png')
+    tree_size = (50, 50)
+    tree_img = pygame.transform.scale(tree_img, tree_size)
+
+    def draw_steering_wheel():
+        rotated_wheel = pygame.transform.rotate(steering_wheel_img, car.angle)
+        wheel_rect = rotated_wheel.get_rect(center=(WIDTH - 100, HEIGHT - 100))
+        screen.blit(rotated_wheel, wheel_rect.topleft)
+
+
+    def draw_pedals(car):
+        # If the car is moving (distance covered is increasing), show the accelerator as pressed
+        accelerating = car.distance > 0  
+        braking = car.speed == 0  # If speed is zero, the car is "braking" (resting)
+
+        accel_size = (pedal_size[0] - 10, pedal_size[1] - 10) if accelerating else pedal_size
+        brake_size = (pedal_size[0] - 10, pedal_size[1] - 10) if braking else pedal_size
+
+        scaled_accel = pygame.transform.scale(accelerator_img, accel_size)
+        scaled_brake = pygame.transform.scale(brake_img, brake_size)
+
+        screen.blit(scaled_accel, accelerator_rect.topleft)
+        screen.blit(scaled_brake, brake_rect.topleft)
 
     global current_generation   
     current_generation += 1
@@ -192,12 +231,12 @@ def run_simulation(genomes, config):
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("Arial", 20)
 
-    max_score = 0  # Track highest score
-    max_iterations = 50  # Limit to 50 iterations
+    max_score = 0  
+    max_iterations = 50  
     final_message = ""
 
     for i, (genome_id, genome) in enumerate(genomes):  
-        if i >= max_iterations or max_score >= 500:  # Stop if 50 iterations or max score 500
+        if i >= max_iterations or max_score >= 500:  # stopping condn
             break  
 
         net = neat.nn.FeedForwardNetwork.create(genome, config)
@@ -212,7 +251,7 @@ def run_simulation(genomes, config):
                 if event.type == pygame.QUIT:
                     sys.exit(0)
 
-            # Get action from the neural network
+            # get action from the NN
             output = net.activate(car.get_data())
             choice = output.index(max(output))
 
@@ -226,12 +265,12 @@ def run_simulation(genomes, config):
             else:
                 car.speed += 2  
 
-            # Update car and fitness
+            # update car and fitness for each genome
             car.update(game_map)
             genome.fitness += car.get_reward()
             current_score = car.distance/10
 
-            # Update max score
+            # update max score 
             max_score = max(max_score, current_score)
 
             if max_score >= 500:
@@ -241,11 +280,14 @@ def run_simulation(genomes, config):
             if counter >= 30 * 40:  
                 break
 
-            # Draw everything
+            # draw calls for everything
             screen.blit(game_map, (0, 0))
             car.draw(screen)
 
-            # UI Text (White Color)
+            draw_steering_wheel()
+            draw_pedals(car)
+
+            # UI text
             iteration_text = font.render(f"Iteration: {i + 1}", True, (255, 255, 255))
             screen.blit(iteration_text, (10, 10))
 
@@ -261,7 +303,7 @@ def run_simulation(genomes, config):
             pygame.display.flip()
             clock.tick(60)  
 
-        # Show death status
+        # death status
         screen.blit(game_map, (0, 0))  
         iteration_text = font.render(f"Iteration: {i + 1}", True, (255, 255, 255))
         screen.blit(iteration_text, (10, 10))
@@ -275,25 +317,29 @@ def run_simulation(genomes, config):
         max_score_text = font.render(f"Max Score: {int(max_score)}", True, (255, 255, 255))
         screen.blit(max_score_text, (WIDTH - 150, 40))
 
+        draw_steering_wheel()
+        draw_pedals(car)
+
         pygame.display.flip()
         pygame.time.delay(500)  
 
-    # Determine the final message
+    # condition -> agent wining or max achieved 
     if max_score >= 500:
         final_message = "Agent successfully completed 500 score"
     else:
         final_message = f"Agent could achieve {int(max_score)} score"
 
-    # Final Screen - Show Max Score After 50 Iterations OR if max score 500 is reached
-    screen.fill((0, 150, 0))  # Greenish background  
+    # final screen - show max score after 50 iterations OR if max score 500 is reached
+    screen.fill((0, 150, 0))   
     final_text = font.render(final_message, True, (255, 255, 255))
     screen.blit(final_text, (WIDTH // 2 - 150, HEIGHT // 2))
 
     pygame.display.flip()
-    pygame.time.delay(3000)  # Show result for 3 seconds before quitting
+    # will hold for 3 secs
+    pygame.time.delay(3000) 
 
 if __name__ == "__main__":
-    # Load Config
+    # config file for neat
     config_path = "ReinforcementLearning_Car_Game/config.txt"
     config = neat.config.Config(neat.DefaultGenome,
                                 neat.DefaultReproduction,
@@ -301,12 +347,11 @@ if __name__ == "__main__":
                                 neat.DefaultStagnation,
                                 config_path)
 
-    # Create Population And Add Reporters
+    # population creation and reporters added
     population = neat.Population(config)
     population.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     population.add_reporter(stats)
 
-    # Run the simulation
-    population.run(run_simulation, 25)
+    population.run(run_simulation, 50)
 
