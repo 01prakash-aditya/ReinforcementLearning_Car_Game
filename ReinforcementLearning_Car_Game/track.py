@@ -6,16 +6,16 @@ TRACK_COLOR = (100, 100, 100)
 TRACK_WIDTH = random.randint(80, 100)
 
 QUADRUPLE_SIZE = 4
-LINE_GAP = 10  # Increased gap between line segments
-LINE_SEGMENT_LENGTH = 20  # Decreased length of each line segment
-LINE_WIDTH = 5  # Width of the line
+LINE_GAP = 9  # gap bw line segs
+LINE_SEGMENT_LENGTH = 20  
+LINE_WIDTH = 5  # line width
 
 def num_segments(point_chain: tuple) -> int:
     # There is 1 segment per 4 points, so we must subtract 3 from the number of points
     return len(point_chain) - (QUADRUPLE_SIZE - 1)
 
 def flatten(list_of_lists) -> list:
-    # E.g. mapping [[1, 2], [3], [4, 5]] to [1, 2, 3, 4, 5]
+    # like mapping [[1, 2], [3], [4, 5]] to [1, 2, 3, 4, 5]
     return [elem for lst in list_of_lists for elem in lst]
 
 def catmull_rom_spline(P0: tuple, P1: tuple, P2: tuple, P3: tuple, num_points: int, alpha: float = 0.5):
@@ -89,19 +89,19 @@ def generate_track(curve_points, track_width):
     return outer_points, inner_points
 
 def draw_track(screen, outer_track, inner_track, chain_points, track_width):
-    # Draw the filled track area
-    track_color = (100, 100, 100)  # Color for the filled track area
+    # draw the filled track area
+    track_color = (100, 100, 100)  # color for the filled track area
     for i in range(len(inner_track)):
         next_i = (i + 1) % len(inner_track)
         pygame.draw.polygon(screen, track_color, [inner_track[i], inner_track[next_i], outer_track[next_i], outer_track[i]])
 
-    # Draw the outer track boundary
+    # the outer track boundary
     pygame.draw.polygon(screen, track_color, outer_track, width=3)
 
-    # Draw the inner track boundary
+    # the inner track boundary
     pygame.draw.polygon(screen, track_color, inner_track, width=3)
 
-    # Draw the central white line in segments
+    # the central white line in segments
     segment_start = 0
     while segment_start < len(chain_points):
         segment_end = min(segment_start + LINE_SEGMENT_LENGTH, len(chain_points) - 1)
